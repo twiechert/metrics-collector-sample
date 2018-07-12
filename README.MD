@@ -1,7 +1,7 @@
 ## Description
 This is a demo project experimenting with Scala, Finatra and the InfluxDB. This three-tier application collects metrics (currently CPU) at the client, 
 sends these to the backend which in turn ingests the data to an InfluxDB instance. In addition, the server application provides API operations that allow insights regarding metric history in general
-and on certain clients in particular
+and on certain clients in particular.
 
 ### Setup
 

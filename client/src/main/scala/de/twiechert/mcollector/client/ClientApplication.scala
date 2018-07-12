@@ -42,7 +42,7 @@ object ClientApplication {
       /**
         * The report suammrized all metrics collected during the last interval
         */
-      val report = MetricReport(sysInfo.getHardware.getComputerSystem.getSerialNumber,
+      val report = MetricReport(sysInfo.getHardware.getNetworkIFs()(0).getMacaddr,
         startTimestamp,
         new Date().getTime,
         measurementsPerAggregate,

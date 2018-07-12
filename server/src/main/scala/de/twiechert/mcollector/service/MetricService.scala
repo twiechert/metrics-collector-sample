@@ -28,7 +28,7 @@ object MetricModule extends TwitterModule {
 trait MetricService {
 
 
-  def writeMetrics(metricReport:MetricReport)
+  def writeMetrics(metricReport: MetricReport)
 
   def getUserMetrics(metricTimeQuery: MetricTimeQuery)
 
@@ -56,17 +56,28 @@ class InfluxDbMetricService extends MetricService {
   }
 
 
-  private def map(metricReport:MetricReport, metric: Metric): Point = {
-    val point = Point(Params.MEASUREMENTS_COLLECTION, metricReport.endTimestamp)
+  private def map(metricReport: MetricReport, metric: Metric): Point = {
+    var point = Point(Params.MEASUREMENTS_COLLECTION, metricReport.endTimestamp)
       .addTag("userId", metricReport.userId)
       .addTag("osVersion", metricReport.osVersion)
       .addTag("osType", metricReport.osType.toString)
 
-    metric match {
-      case cpuMetric: CpuMetric =>
+    point = metric match {
+      case cpuMetric: CpuMetric => {
+        val coreAvgMax = cpuMetric.avgUtilizationByCore.toSeq.max
+        val coreVarMax = cpuMetric.varUtilizationByCore.toSeq.max
+        val coreAvgMin = cpuMetric.avgUtilizationByCore.toSeq.min
+        val coreVarMin = cpuMetric.varUtilizationByCore.toSeq.min
+
         point.addField("cpuLoadAvg", cpuMetric.avgUtilization)
-        point.addField("cpuLoadVar", cpuMetric.varUtilization)
-      case _ =>
+          .addField("cpuLoadVar", cpuMetric.varUtilization)
+          .addField("cpuCoreLoadAvgMax", coreAvgMax)
+          .addField("cpuCoreLoadAvgMin", coreAvgMin)
+          .addField("cpuCoreLoadVarMax", coreVarMax)
+          .addField("cpuCoreLoadMinMin", coreVarMin)
+      }
+
+      case _ => point
     }
 
     point
