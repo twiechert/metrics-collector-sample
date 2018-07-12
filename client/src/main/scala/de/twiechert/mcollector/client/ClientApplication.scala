@@ -1,4 +1,5 @@
 package de.twiechert.mcollector.client
+
 import java.util
 import java.util.{Date, Locale}
 
@@ -15,73 +16,86 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
 object ClientApplication {
 
-  val metricProviders = List(new CpuMetricProvider)
-  val msBetweenMeasurements = 50
-  val measurementsPerAggregate = 100
-  val sysInfo: SystemInfo = new SystemInfo
-  val osType = this.determineOsType()
-  val osVersion = sysInfo.getOperatingSystem.getVersion.getVersion
-  val metricServiceBackendUrl = "http://localhost:8888/api/v1/metrics"
-  val mapper: ObjectMapper = new ObjectMapper
-  mapper.registerModule(DefaultScalaModule)
-  mapper.setPropertyNamingStrategy(
-    PropertyNamingStrategy.SNAKE_CASE)
+  private val metricProviders = List(new CpuMetricProvider)
+  private val msBetweenMeasurements = 50
+  private val measurementsPerAggregate = 100
+  private val sysInfo: SystemInfo = new SystemInfo
+  private val osType = this.determineOsType()
+  private val osVersion = sysInfo.getOperatingSystem.getVersion.getVersion
+  private val metricServiceBackendUrl = "http://localhost:8888/api/v1/metrics"
+  private val mapper: ObjectMapper = this.configureObjectMapper()
+  private val httpClient = HttpClientBuilder.create().build()
+
 
   def main(args: Array[String]): Unit = {
     println("This is the file sharing client app")
     while (true) {
 
       val startTimestamp = new Date().getTime
-      for(i <- 1 to measurementsPerAggregate) {
-        for(metricProvider <- this.metricProviders) {
+      for (i <- 1 to measurementsPerAggregate) {
+        for (metricProvider <- this.metricProviders) {
           metricProvider.measure()
           Thread.sleep(msBetweenMeasurements)
         }
       }
 
-      val report =  MetricReport(sysInfo.getHardware.getComputerSystem.getSerialNumber,
+      /**
+        * The report suammrized all metrics collected during the last interval
+        */
+      val report = MetricReport(sysInfo.getHardware.getComputerSystem.getSerialNumber,
         startTimestamp,
         new Date().getTime,
         measurementsPerAggregate,
         this.osType,
         osVersion,
-        metricProviders.map(provider => provider.getAggregatedMetric() ).toArray)
+        metricProviders.map(provider => provider.getAggregatedMetric).toArray)
 
       this.sendReport(report)
 
     }
 
-
   }
 
-  def sendReport(report:MetricReport): Unit = {
-    // create our object as a json string
-    val reportJson = mapper.writeValueAsString(report);
-    val client = HttpClientBuilder.create().build()
+  /**
+    * Sends the current metric report through http to the backend
+    * @param report the report to send to the backend system
+    */
+  def sendReport(report: MetricReport): Unit = {
 
-    val post = new HttpPost(metricServiceBackendUrl)
+    // ignore errors during prototype and just try next time again
+    try {
 
-    // add name value pairs
-    val nameValuePairs = new util.ArrayList[NameValuePair]()
-    nameValuePairs.add(new BasicNameValuePair("JSON", reportJson))
-    val requestEntity = new StringEntity(
-      reportJson,
-      ContentType.APPLICATION_JSON);
-    post.setEntity(requestEntity)
+      // create our object as a json string
+      val reportJson = mapper.writeValueAsString(report)
+      println(s"Sending $reportJson")
 
-    // send the post request
-    val response = client.execute(post)
-    println("--- HEADERS ---")
-    response.getAllHeaders.foreach(arg => println(arg))
+      val post = new HttpPost(metricServiceBackendUrl)
+      val requestEntity = new StringEntity(
+        reportJson,
+        ContentType.APPLICATION_JSON)
+      post.setEntity(requestEntity)
+
+      // send the post request
+      httpClient.execute(post)
+    } catch {
+      case e: Exception => e.printStackTrace()
+    }
   }
 
-  def determineOsType()={
+  def determineOsType():String = {
     System.getProperty("os.name", "generic").toLowerCase(Locale.ENGLISH) match {
-      case e if (e.indexOf("mac") >= 0) || (e.indexOf("darwin") >= 0) =>  "MacOS"
-      case e if e.indexOf("win")  >= 0 =>  "Windows"
-      case _ =>  "Linux"
+      case e if (e.indexOf("mac") >= 0) || (e.indexOf("darwin") >= 0) => "MacOS"
+      case e if e.indexOf("win") >= 0 => "Windows"
+      case _ => "Linux"
 
     }
+  }
+
+  private def configureObjectMapper() = {
+    val mapper = new ObjectMapper()
+    mapper.registerModule(DefaultScalaModule)
+    mapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE)
+    mapper
   }
 
 }
