@@ -1,23 +1,26 @@
 {
-  "user_id": "some_user",
-  "seq": [
+  "user_id": "6a:d6:96:d3:45:35",
+  "start_timestamp": 1531402660605,
+  "end_timestamp": 1531402665626,
+  "observations_per_metric": 100,
+  "os_type": "Linux",
+  "os_version": "18.04 LTS",
+  "metrics": [
     {
-      "start_timestamp": 1531319040000,
-      "end_timestamp": 1531319400000,
-      "obversations": 100,
-      "avg_utilization": 0.45,
-      "var_utilization": 0.02,
+      "type": "CPU",
+      "avg_utilization": 0.2148631642976225,
+      "var_utilization": 0.005718669350831782,
       "avg_utilization_by_core": [
-        0.5,
-        0.4,
-        0.5,
-        0.4
+        0.19575989029493227,
+        0.19210218632004747,
+        0.24848360030511063,
+        0.18310711960197185
       ],
       "var_utilization_by_core": [
-        0.02,
-        0.02,
-        0.02,
-        0.02
+        0.0033936742208834853,
+        0.002245358139130047,
+        4.7853845483180853E-4,
+        0.0030582163825456816
       ],
       "name": "CpuUtilization"
     }

@@ -3,6 +3,13 @@ This is a demo project experimenting with Scala, Finatra and the InfluxDB. This 
 sends these to the backend which in turn ingests the data to an InfluxDB instance. In addition, the server application provides API operations that allow insights regarding metric history in general
 and on certain clients in particular.
 
+![Influx](https://raw.githubusercontent.com/twiechert/metrics-collector-sample/master/img/influx_screen.png)
+
+
+![Grafana](https://raw.githubusercontent.com/twiechert/metrics-collector-sample/master/img/grafana_metrics.png)
+
+
+
 ### Setup
 
 - the serve stores the metrics in an influxdb and makes the visible through a Grafana interface
@@ -23,6 +30,8 @@ docker run -d \
 - influx interface
 http://localhost:3004/
 
+**navigate to the interface and make sure the database METRICS is created**
+
 - grafana interface
 http://localhost:3003/login  root:root
 
@@ -32,6 +41,54 @@ Data is then visualized in a Grafana dashboard
 
 #### API Operations
 
+- POST /api/v1/metrics
+```
+curl --header "Content-Type: application/json" \
+  --request POST \
+  --data '{
+            "user_id": "6a:d6:96:d3:45:35",
+            "start_timestamp": 1531402660605,
+            "end_timestamp": 1531402665626,
+            "observations_per_metric": 100,
+            "os_type": "Linux",
+            "os_version": "18.04 LTS",
+            "metrics": [
+              {
+                "type": "CPU",
+                "avg_utilization": 0.2148631642976225,
+                "var_utilization": 0.005718669350831782,
+                "avg_utilization_by_core": [
+                  0.19575989029493227,
+                  0.19210218632004747,
+                  0.24848360030511063,
+                  0.18310711960197185
+                ],
+                "var_utilization_by_core": [
+                  0.0033936742208834853,
+                  0.002245358139130047,
+                  4.7853845483180853E-4,
+                  0.0030582163825456816
+                ],
+                "name": "CpuUtilization"
+              }
+            ]
+          }
+' \
+  http://localhost:8888/api/v1/metrics
+```
+
+- GET /api/v1/metrics/:metric/byUser/:userId 
+```
+curl --header "Content-Type: application/json" \
+  --request GET \
+  --data '{
+            "start":"2018-07-12T12:15:00Z",
+            "end": "2018-07-12T16:15:00Z",
+            "resample_rate" : "15m"
+          }
+' \
+  http://localhost:8888/api/v1/metrics/cpuLoadAvg/byUser/6a:d6:96:d3:45:35
+```
 
 ### Client
 The client collects the follwing stats which it sends to the backend

@@ -1,5 +1,7 @@
 package de.twiechert.mcollector.common.domain
 
+import java.util.Date
+
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type
 import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
 
@@ -52,5 +54,7 @@ case class CpuMetric(avgUtilization:Double,
   override def getName: String = "CpuUtilization"
 }
 
-case class MetricTimeQuery(start:Long,end:Long,resampleRateInMinutes:Int=15)
 
+case class UnivariateTimeseriesEntry(date:Date, value:Double)
+
+case class UnivariateTimeseries(entries:Seq[UnivariateTimeseriesEntry])

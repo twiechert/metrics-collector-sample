@@ -1,14 +1,19 @@
 package de.twiechert.mcollector.service
 
+import java.text.SimpleDateFormat
+
 import com.google.inject.Provides
 import com.paulgoldbaum.influxdbclient.{InfluxDB, Point}
 import com.paulgoldbaum.influxdbclient.Parameter.Precision
 import com.twitter.inject.TwitterModule
 import de.twiechert.mcollector.config.Params
 import javax.inject.Singleton
-import de.twiechert.mcollector.common.domain.{CpuMetric, Metric, MetricReport, MetricTimeQuery}
+import de.twiechert.mcollector.common.domain._
+import de.twiechert.mcollector.domain.UserMetricTimeQuery
 
+import scala.util.{Failure, Success, Try}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 
 object MetricModule extends TwitterModule {
@@ -28,10 +33,17 @@ object MetricModule extends TwitterModule {
 trait MetricService {
 
 
+  /**
+    * Writes the give metric object to the data store
+    * @param metricReport
+    */
   def writeMetrics(metricReport: MetricReport)
 
-  def getUserMetrics(metricTimeQuery: MetricTimeQuery)
+  def getUserMetrics(metricTimeQuery: UserMetricTimeQuery): Future[UnivariateTimeseries]
 
+  /**
+    * Closes the connection to the data store
+    */
   def shutdown()
 
 }
@@ -43,10 +55,24 @@ class InfluxDbMetricService extends MetricService {
 
   private val influxdb = InfluxDB.connect(Params.METRICS_DB_HOST, Params.METRICS_DB_PORT)
   private val database = influxdb.selectDatabase(Params.METRICS_DB)
+  private val influxDateFormat  = new SimpleDateFormat("YYYY-MM-dd'T'HH:mm:ss'Z'")
 
+  // @TODO replace metric by enum
+  override def getUserMetrics(metricTimeQuery: UserMetricTimeQuery): Future[UnivariateTimeseries] = {
+    val response = database.query(s""" SELECT MEAN(${metricTimeQuery.metric}) FROM "${Params.MEASUREMENTS_COLLECTION}" WHERE time > '${metricTimeQuery.start}' and time < '${metricTimeQuery.end}' GROUP BY time(${metricTimeQuery.resampleRate}) """ )
+    response transform {
+      case Success(records) =>
+        val timeseriesEntries = records.series.head.records
+          .filter(record => record.allValues.size > 1 && record.allValues.head != null && record.allValues(1) != null )
+          .map( record => UnivariateTimeseriesEntry(influxDateFormat.parse(record.allValues.head.asInstanceOf[String]), record.allValues(1).asInstanceOf[BigDecimal].toDouble ))
+        Try (UnivariateTimeseries(timeseriesEntries))
 
-  override def getUserMetrics(metricTimeQuery: MetricTimeQuery): Unit = {
-    database.query("SELECT * FROM cpu")
+       // in future return proper error object
+      case Failure(t) =>
+        println("An error has occurred: " + t.getMessage)
+        Try(UnivariateTimeseries(Seq()))
+
+    }
   }
 
 
